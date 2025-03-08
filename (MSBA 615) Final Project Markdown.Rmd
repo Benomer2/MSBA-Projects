@@ -1,0 +1,280 @@
+---
+title: "Final Project"
+author: "Ben Omer"
+date: "2024-12-10"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Part 1 - Clean the Data
+Before we begin, let's run the necessary libraries:
+```{r librarys, echo=TRUE, message=FALSE}
+library(tidyverse) 
+library(dslabs)
+library(readxl)
+library(shadowtext)
+```
+
+### Read the file to generate a dataset
+Our first step in the process is to clean and restructure the data. In order to do that, we need to read the excel file with all our data. We can do that as follows:
+
+```{r read, echo=TRUE, message=FALSE}
+cbb_data <- read_excel("C:/Users/benom/OneDrive - University of Louisville/MSBA/R/kenpom_dec.xls")
+```
+
+### Filter data for only relevant information
+Next, as apart of the cleaning process, let's filter our data so that we have only relevant information. In this process, we will select only Team Names, Adjusted margins, efficiency, and Tempo. We will also include the rankings among all teams for each team in our data:
+
+```{r filter, echo=TRUE, message=FALSE}
+only_top25 <- cbb_data |> 
+  select(TeamName, AdjEM, RankAdjEM, AdjTempo, RankAdjTempo,
+         AdjOE, RankAdjOE, AdjDE, RankAdjDE) |>
+  filter(RankAdjEM <= 25) |>
+  arrange(RankAdjEM)
+```
+
+## Part 2 - Data Visualization
+We want to see how teams compare. Specifically, we want to see how teams compare offensively and defensively. We do this in our table by observing our adjusted offensive and adjusted defensive efficiency.
+
+These 2 columns take the points per 100 possessions scored and allowed and generates a number. For offensive columns, you want a very high number. conversely, for a defensive number you want a low number.
+
+Let's see how the top 25 teams compare with each other and start to make our conclusions:
+
+```{r Efficiency, echo=FALSE, message=FALSE}
+only_top25 |> ggplot(aes(AdjOE, AdjDE)) +
+  geom_shadowtext(aes(label = TeamName, color = TeamName),
+                  bg.color = "black",
+                  bg.r = 0.2,
+                  size = 3) +
+  scale_color_manual(values = c("Gonzaga" = "steelblue",
+                                "Auburn" = "darkorange",
+                                "Kentucky" = "blue",
+                                "Duke" = "blue",
+                                "Michigan" = "yellow",
+                                "Tennesse" = "orange",
+                                "Marquette" = "gold",
+                                "Kansas" = "blue",
+                                "St. John's" = "red",
+                                "Clemson" = "orange",
+                                "UCLA" = "cadetblue",
+                                "Cincinnati" = "red",
+                                "Texas Tech" = "red",
+                                "Oregon" = "green",
+                                "Maryland" = "tomato",
+                                "North Carolina" = "skyblue",
+                                "Mississippi St." = "brown",
+                                "Illinois" = "orangered1",
+                                "Purdue" = "gold4",
+                                "Houston" = "red",
+                                "Iowa St." = "brown2",
+                                "Baylor" = "darkgreen",
+                                "Connecticut" = "darkslateblue",
+                                "Alabama" = "red1",
+                                "Florida" = "green3",
+                                "Tennessee" = "orange")) +
+  scale_y_reverse() +
+  labs(title = "Offensive Efficiency vs Defensive Efficiency",
+       x = "Offensive Efficiency",
+       y = "Defensive Efficiency") +
+  theme(legend.position = "none")
+```
+
+Based on our chart, we see a few teams that are top of the pack. We want to look specifically at Auburn, Gonzaga, Tennessee, Duke, and Houston. We pick these 5 teams for a couple of reasons.
+
+1. These teams rank top 5 in Adjusted Efficiency Margin, which takes both Offensive and Defensive margins and subtracts the Defensive Margin from the Offensive Margin.
+
+Basically, if a team score a lot of points, but also limits their opponents from scoring, they will have a high Efficiency Margin.
+
+2. Based on the above chart, we can see that those teams are separated from the rest by either having stellar defense, or an impactful offense. No ranking column needed!
+
+With that being said, Let's compare between the 5 of them:
+
+```{r Compared, echo=FALSE}
+teams <- c("Auburn", "Gonzaga", "Tennessee", "Duke", "Houston")
+
+comparison <- only_top25 |>
+  filter(TeamName %in% teams) |>
+  select(TeamName, AdjOE, AdjDE) |>
+  pivot_longer(cols = c(AdjOE, AdjDE),
+               names_to  = "Metric",
+               values_to = "Efficiency")
+
+ggplot(comparison, aes(x = TeamName, y = Efficiency, fill = TeamName)) + 
+  geom_col() +
+  scale_fill_manual(values = c("Gonzaga" = "steelblue4",
+                               "Auburn" = "darkorange2",
+                               "Duke" = "blue",
+                               "Tennessee" = "orange",
+                               "Houston" = "red")) +
+  facet_wrap(~ Metric, ncol = 1, 
+             labeller = as_labeller(c("AdjOE" = "Offensive Efficiency",
+                                  "AdjDE" = "Defensive Efficiency"))) +
+  scale_y_continuous(limits = c(80, 140), oob = scales::squish) +
+  labs(title = "Efficiency Compared",
+       x = "Team Name",
+       y = "Efficiency Margins") +
+  theme(legend.position = "none")
+```
+
+One thing we can note from our bar plots is that as Offensive Efficiency is higher than other teams, defensive Efficiency is also higher.
+
+This tells us that, most likely, teams that are great offensive teams are typically not as good on defense as great defensive teams.
+
+Lastly, we want to see how tempo affects the offense of the top 25 teams. Reason being, coaches now days are concerned with how tempo generates offense.Should teams play fast in order to get more possessions, or should they try and slow the game down in order to wear teams out?
+
+Let's look at our last plot and see what trend we see:
+
+```{r Tempo, echo=FALSE}
+ggplot(only_top25, aes(AdjOE, AdjTempo)) +
+  geom_point(size = 1) + 
+  geom_smooth(method = "lm", color = "black") + 
+  geom_shadowtext(aes(label = TeamName, color = TeamName),
+                  bg.color = "black",
+                  bg.r = 0.2,
+                  size = 3) +
+  scale_color_manual(values = c("Gonzaga" = "steelblue",
+                                "Auburn" = "darkorange",
+                                "Kentucky" = "blue",
+                                "Duke" = "blue",
+                                "Michigan" = "yellow",
+                                "Tennesse" = "orange",
+                                "Marquette" = "gold",
+                                "Kansas" = "blue",
+                                "St. John's" = "red",
+                                "Clemson" = "orange",
+                                "UCLA" = "cadetblue",
+                                "Cincinnati" = "red",
+                                "Texas Tech" = "red",
+                                "Oregon" = "green",
+                                "Maryland" = "tomato",
+                                "North Carolina" = "skyblue",
+                                "Mississippi St." = "brown",
+                                "Illinois" = "orangered1",
+                                "Purdue" = "gold4",
+                                "Houston" = "red",
+                                "Iowa St." = "brown2",
+                                "Baylor" = "darkgreen",
+                                "Connecticut" = "darkslateblue",
+                                "Alabama" = "red1",
+                                "Florida" = "green3",
+                                "Tennessee" = "orange")) +
+  scale_x_continuous(name = "Efficiency Margin") + 
+  scale_y_continuous(name = "Tempo") + 
+  labs(title = "Tempo compared to Efficiency Margin") +
+  theme(legend.position = "none")
+```
+
+Conclusion: of the 5 teams we looked at, only Gonzaga is above the regression line which separates the top 25. There is also only a slight increase in the regression line. So, the best teams can win by either picking up the pace and hurrying teams up, or they can slow their opponents down by wearing them down defensively.
+
+## Part 3 - Machine Learning
+
+**Prediction problem**
+Which is a better predictor of a team in the top 25: Offensive Efficiency, or Defensive Efficiency?
+
+
+### Step 1 - Transform EM column into binary
+
+In order for us to run the statistical analysis, we need a column wuth binary information in it. We will create a column using a conditional statement in which some teams will fall in the "1" category, while the rest of the teams will fall into the "2" category.
+
+```{r Binary, echo=TRUE}
+cbb_data$top_25 <- ifelse(cbb_data$RankAdjEM <= 25, "1", "0")
+head(cbb_data$top_25)
+```
+
+
+### Step 2 - EDA
+
+We will pull a summary of the statistics for our data set, then we will perform some EDA on the statistics.
+
+```{r Summary, echo=TRUE, message=FALSE}
+summary(cbb_data)
+```
+
+```{r EDA}
+ggplot(cbb_data, aes(x = AdjOE, y = AdjDE, color = top_25)) +
+  geom_point(size = 2) +
+  scale_y_reverse() +
+  labs(title = "Relationship between Offensive Efficiency & Defensive Efficiency,
+       on a Teams rank")
+```
+
+Since we want to compare the Offensive and Defensive Efficiency in reference to the ranking of each team, we produce something like we see above.
+
+Right away we can see that the teams in the top 25 category are relatively high in both predictors compared the the rest of the teams (This was to be expected). But let's see if we can use machine learning to make accurate predictions on this.
+
+
+### Step 3 - Train-Test Split
+
+We will need to split our data into a Training set, and a Testing split. We will do that as follows:
+
+```{r needed, echo=TRUE, message=FALSE}
+set.seed(123)
+library(caret)
+```
+```{r training and test, echo=TRUE, message=FALSE}
+train_index <- createDataPartition(cbb_data$top_25, p = 0.9, list = FALSE)
+train_data <- cbb_data[train_index, ]
+test_data <- cbb_data[-train_index, ]
+```
+
+We have set our confidence level at 90%, in most part because our data is relatively large.
+
+
+### Step 4 - Fit Logistic Regression Model
+
+Now we build our model. This is where we can check to see if our model is a good fit and if our results can yeild good information.
+
+```{r model, echo=TRUE, warning=FALSE}
+train_data$top_25 <- as.factor(train_data$top_25)
+logit_model <- glm(top_25 ~ AdjOE  + AdjDE, 
+                   data = train_data, family = "binomial")
+```
+```{r summary_2, echo=TRUE, message=FALSE}
+summary(logit_model)
+```
+
+**Interpretion**
+A positive in the estimate column indicates that an increase in that estimate produces a higher odds of being in the top 25 (for defense, since it is measured backwards, indicates the same thing in reverse)
+
+Although, the model does not seem to produce statistically significant predictors or show a good model fit in the aic.
+
+
+### Part 5 - Predict and Evaluate the model
+
+Here is where we start to test the predictions through the Machine Learning model.
+
+First, we will Predict probabilities on the test set. Then, we will run the confusion matrix and accuracy to produce our results.
+
+```{r}
+test_data$predicted_prob <- predict(logit_model, newdata = test_data, type = "response")
+test_data$predicted_class <- ifelse(test_data$predicted_prob > 0.9, 1, 0)
+conf_matrix <- confusionMatrix(as.factor(test_data$predicted_class), as.factor(test_data$top_25))
+conf_matrix
+```
+
+When the threshold is set to 0.5 we see a 97 % accuracy rate along with a 0.3 p-value. The model is not perfect
+
+
+### Step 6 - Visualize model performance
+
+Now we run our histogram in order to see how our model performed.
+
+```{r}
+ggplot(test_data, aes(x = predicted_prob, fill = top_25)) +
+  geom_histogram(binwidth = 0.1, alpha = 0.9, position = "identity") +
+  labs(title = "Predicted Probabilities by Transmission Type",
+       x = "Predicted Probability (Manual)",
+       y = "Count") +
+  theme_minimal()
+```
+
+The histogram gives us a visual of our prediction model. We can see how it predicts for each model, and it is 97% accurate. We want a large gap between each bar because that will signal whether the model predicted accurately based on our binary values.
+
+for the 0.00, we had a count of 33 predicted correctly (see confusion matrix), and we had a correct count of 1 for the 1.00 bar. With the 97% accuracy, this is to be expected.
+
+Overall, our model performed accurately for the data we put through the Machine Learning script.
